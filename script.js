@@ -1,4 +1,3 @@
-
 // 병과 분류
 const Dhero = ["헥터", "아모세", "로건", "플린트", "제로니모", "나탈리아", "세르게이", "유진", "스미스"];
 const Lhero = ["노라", "레이나", "미야", "필리", "몰리", "제시", "료우키", "보겐", "찰리", "패트릭"];
@@ -9,6 +8,7 @@ const heroTable = document.getElementById("heroTable");
 const calculateButton = document.getElementById("calculateButton");
 const btnResetExplain = document.getElementById("btnResetExplain");
 const inputLeaderHero = document.getElementById("inputLeaderHero");
+const inputDefenseHero = document.getElementById("inputDefenseHero");
 const explainSpans = Array.from({ length: 7 }, (_, i) => document.getElementById(`explain${i}`));
 
 let NumberHero = [];
@@ -20,15 +20,24 @@ heroTable.querySelectorAll("td").forEach((cell) => {
 
   cell.addEventListener("click", () => {
     const leaderText = inputLeaderHero.value.trim();
+    const defenseText = inputDefenseHero.value.trim();
+
     let leaderNames = leaderText.replace(/[/,]/g, " ").split(/\s+/).map(n => n.trim()).filter(n => n);
+    let defenseNames = defenseText.replace(/[/,]/g, " ").split(/\s+/).map(n => n.trim()).filter(n => n);
 
     if (leaderNames.length === 1 && leaderNames[0].length > 2) {
       const flatText = leaderNames[0];
-      leaderNames = [...Dhero, ...Lhero, ...Mhero].filter(hero => flatText.includes(hero));
+      leaderNames = [...Dhero, ...Lhero, ...Mhero].filter(hero => flatText.split(" ").includes(hero));
     }
 
-    if (leaderNames.includes(name)) {
-      alert("입력된 리더 영웅은 선택할 수 없습니다.");
+    if (defenseNames.length === 1 && defenseNames[0].length > 2) {
+      const flatText = defenseNames[0];
+      defenseNames = [...Dhero, ...Lhero, ...Mhero].filter(hero => flatText.split(" ").includes(hero));
+    }
+
+    const blockedHeroes = new Set([...leaderNames, ...defenseNames]);
+    if (blockedHeroes.has(name)) {
+      alert("입력된 리더/수비 영웅은 선택할 수 없습니다.");
       return;
     }
 
@@ -43,10 +52,10 @@ heroTable.querySelectorAll("td").forEach((cell) => {
       cell.setAttribute("data-order", NumberHero.length);
     }
 
-    // 리더 영웅 자동 해제
+    // 차단된 영웅 자동 해제
     heroTable.querySelectorAll("td").forEach((c) => {
       const heroName = c.textContent.trim();
-      if (leaderNames.includes(heroName)) {
+      if (blockedHeroes.has(heroName)) {
         const i = NumberHero.indexOf(heroName);
         if (i > -1) NumberHero.splice(i, 1);
         c.classList.remove("selected");
@@ -94,7 +103,7 @@ function tryGroup(Dlist, Mlist, Llist, usedSet, maxRetry = 5) {
     const A = order[0], B = order[1], C = order[2];
 
     if (Firsthero.includes(A)) {
-      return { group: order, text: `<span class="text-blue-600">- ${order.join(", ")} : 자동 집결 참여<\span>`, used: new Set(order) };
+      return { group: order, text: `<span class="text-blue-600">- ${order.join(", ")} : 자동 집결 참여</span>`, used: new Set(order) };
     }
 
     const BC = [B, C].filter(h => Firsthero.includes(h));
@@ -106,7 +115,7 @@ function tryGroup(Dlist, Mlist, Llist, usedSet, maxRetry = 5) {
 
     return {
       group: order,
-      text: `<span class="text-red-500">- ${order.join(", ")} : 가까운 깃발에 버려두기<\span>`,
+      text: `<span class="text-red-500">- ${order.join(", ")} : 가까운 깃발에 버려두기</span>`,
       used: new Set(order)
     };
   }
@@ -132,12 +141,10 @@ calculateButton.addEventListener("click", () => {
   }
 
   explainSpans.forEach((span, i) => span.innerHTML = results[i] || "");
-
-  // 후처리
   postprocessExplainTexts();
 });
 
-// 후처리 로직
+// 후처리
 function postprocessExplainTexts() {
   const discardText = "가까운 깃발에 버려두기";
   const fallbackText = "나머지 행군은 부대 지정 or 병사만 참여";
@@ -145,14 +152,12 @@ function postprocessExplainTexts() {
 
   const texts = explainSpans.map(span => span.textContent.trim());
 
-  // 전부 '가까운 깃발에 버려두기' 인 경우
   if (texts.every(t => t.endsWith(discardText))) {
     for (let i = 1; i <= 5; i++) explainSpans[i].textContent = "";
     explainSpans[0].textContent = banText;
     return;
   }
 
-  // 끝에서부터 연속적으로 discardText인 위치 찾기
   let i = 5;
   while (i >= 0 && texts[i].endsWith(discardText)) i--;
 
@@ -165,10 +170,11 @@ function postprocessExplainTexts() {
   }
 }
 
-// 리셋
+// 리셋 버튼
 btnResetExplain.addEventListener("click", () => {
   explainSpans.forEach(span => span.textContent = "");
   inputLeaderHero.value = "";
+  inputDefenseHero.value = "";
   NumberHero = [];
   heroTable.querySelectorAll("td").forEach(cell => {
     cell.classList.remove("selected");
@@ -176,14 +182,14 @@ btnResetExplain.addEventListener("click", () => {
   });
 });
 
-// 리더영웅 입력 변경 시 자동 해제
+// 리더 입력 변경 시 선택 자동 해제
 inputLeaderHero.addEventListener("input", () => {
   const leaderText = inputLeaderHero.value.trim();
   let leaderNames = leaderText.replace(/[/,]/g, " ").split(/\s+/).map(n => n.trim()).filter(n => n);
 
   if (leaderNames.length === 1 && leaderNames[0].length > 2) {
     const flatText = leaderNames[0];
-    leaderNames = [...Dhero, ...Lhero, ...Mhero].filter(hero => flatText.includes(hero));
+    leaderNames = [...Dhero, ...Lhero, ...Mhero].filter(hero => flatText.split(" ").includes(hero));
   }
 
   heroTable.querySelectorAll("td").forEach((cell) => {
@@ -198,6 +204,7 @@ inputLeaderHero.addEventListener("input", () => {
     }
   });
 
+  // 순서 재정렬
   heroTable.querySelectorAll("td").forEach((c) => {
     const n = c.textContent.trim();
     const i = NumberHero.indexOf(n);
@@ -209,13 +216,14 @@ inputLeaderHero.addEventListener("input", () => {
   });
 });
 
-// 수비영웅 입력 처리
+// 수비영웅 입력 시 자동 해제
 inputDefenseHero.addEventListener("input", () => {
   const defenseText = inputDefenseHero.value.trim();
   let defenseNames = defenseText.replace(/[/,]/g, " ").split(/\s+/).map(n => n.trim()).filter(n => n);
+
   if (defenseNames.length === 1 && defenseNames[0].length > 2) {
     const flatText = defenseNames[0];
-    defenseNames = [...Dhero, ...Lhero, ...Mhero].filter(hero => flatText.includes(hero));
+    defenseNames = [...Dhero, ...Lhero, ...Mhero].filter(hero => flatText.split(" ").includes(hero));
   }
 
   heroTable.querySelectorAll("td").forEach((cell) => {
@@ -230,6 +238,7 @@ inputDefenseHero.addEventListener("input", () => {
     }
   });
 
+  // 순서 재정렬
   heroTable.querySelectorAll("td").forEach((c) => {
     const n = c.textContent.trim();
     const i = NumberHero.indexOf(n);
